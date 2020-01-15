@@ -212,6 +212,21 @@ class MongoDb
         );
         shell_exec($cmd);
     }
+    
+    public function loadFromMongoDumpArchive($dumpFile)
+    {
+        list($host, $port) = $this->getHostPort();
+        $cmd = sprintf(
+            "mongorestore %s --host %s --port %s --nsInclude %s %s --gzip --archive=%s",
+            $this->quiet,
+            $host,
+            $port,
+            $this->dbName . '.*',
+            $this->createUserPasswordCmdString(),
+            escapeshellarg($dumpFile)
+        );
+        shell_exec($cmd);
+    }
 
     private function createUserPasswordCmdString()
     {

@@ -43,7 +43,7 @@ use Codeception\TestInterface;
  * * user *required* - user to access database
  * * password *required* - password
  * * dump_type *required* - type of dump.
- *   One of 'js' (MongoDb::DUMP_TYPE_JS), 'mongodump' (MongoDb::DUMP_TYPE_MONGODUMP) or 'mongodump-tar-gz' (MongoDb::DUMP_TYPE_MONGODUMP_TAR_GZ).
+ *   One of 'js' (MongoDb::DUMP_TYPE_JS), 'mongodump' (MongoDb::DUMP_TYPE_MONGODUMP), 'mongodump-tar-gz' (MongoDb::DUMP_TYPE_MONGODUMP_TAR_GZ) or 'mongodump-archive' (MongoDb:DUMP_TYPE_MONGODUMP_ARCHIVE).
  *   default: MongoDb::DUMP_TYPE_JS).
  * * dump - path to database dump
  * * populate: true - should the dump be loaded before test suite is started.
@@ -55,6 +55,7 @@ class MongoDb extends CodeceptionModule implements RequiresPackage
     const DUMP_TYPE_JS = 'js';
     const DUMP_TYPE_MONGODUMP = 'mongodump';
     const DUMP_TYPE_MONGODUMP_TAR_GZ = 'mongodump-tar-gz';
+    const DUMP_TYPE_MONGODUMP_ARCHIVE = 'mongodump-archive';
 
     /**
      * @api
@@ -150,7 +151,7 @@ class MongoDb extends CodeceptionModule implements RequiresPackage
                 $dumpDir->close();
                 return;
             }
-
+            
             if ($this->config['dump_type'] === self::DUMP_TYPE_MONGODUMP_TAR_GZ) {
                 if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                     throw new ModuleConfigException(
@@ -159,6 +160,17 @@ class MongoDb extends CodeceptionModule implements RequiresPackage
                     );
                 }
                 if (!preg_match('/(\.tar\.gz|\.tgz)$/', $this->dumpFile)) {
+                    throw new ModuleConfigException(
+                        __CLASS__,
+                        "Dump file must be a valid tar gunzip archive.\n
+                        Please, check dump file: " . $this->config['dump']
+                    );
+                }
+                return;
+            }
+            
+            if ($this->config['dump_type'] === self::DUMP_TYPE_MONGODUMP_ARCHIVE) {
+                if (!preg_match('/\.gz$/', $this->dumpFile)) {
                     throw new ModuleConfigException(
                         __CLASS__,
                         "Dump file must be a valid tar gunzip archive.\n
@@ -226,6 +238,10 @@ class MongoDb extends CodeceptionModule implements RequiresPackage
             if ($this->config['dump_type'] === self::DUMP_TYPE_MONGODUMP_TAR_GZ) {
                 $this->driver->setQuiet($this->config['quiet']);
                 $this->driver->loadFromTarGzMongoDump($this->dumpFile);
+            }
+            if ($this->config['dump_type'] === self::DUMP_TYPE_MONGODUMP_ARCHIVE) {
+                $this->driver->setQuiet($this->config['quiet']);
+                $this->driver->loadFromMongoDumpArchive($this->dumpFile);
             }
         } catch (\Exception $e) {
             throw new ModuleException(__CLASS__, $e->getMessage());
